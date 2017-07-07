@@ -1,0 +1,111 @@
+#!/usr/bin/env python
+
+from flask import Flask, jsonify, abort, make_response, request
+import os
+import sys
+import socket
+import datetime
+
+
+app = Flask(__name__)
+ip = '10.0.2.15'
+region = 'eu-vagrant-1'
+userdata_file = '/etc/user-data'
+access_key_id = ''
+secret_access_key = ''
+if os.environ.get('AWS_ACCESS_KEY_ID') is not None:
+    access_key_id = os.environ['AWS_ACCESS_KEY_ID']
+if os.environ.get('AWS_SECRET_ACCESS_KEY') is not None:
+    secret_access_key = os.environ['AWS_SECRET_ACCESS_KEY']
+
+
+@app.route('/', methods=['GET'])
+def index():
+    return 'latest'
+
+
+@app.route('/latest/', methods=['GET'])
+def latest():
+    endpoints = [
+        'meta-data',
+        'user-data'
+    ]
+    return ('\n').join(endpoints)
+
+
+@app.route('/latest/meta-data/', methods=['GET'])
+def meta_data():
+    endpoints = [
+        'iam',
+        'local-hostname',
+        'local-ipv4'
+    ]
+    return ('\n').join(endpoints)
+
+
+@app.route('/latest/meta-data/iam/', methods=['GET'])
+def iam():
+    return 'security-credentials'
+
+
+@app.route('/latest/meta-data/iam/security-credentials/', methods=['GET'])
+def security_credentials():
+    return 'iam_role'
+
+
+@app.route('/latest/meta-data/iam/security-credentials/iam_role', methods=['GET'])
+def base_iam_role():
+    iam_role = {
+        'Code': 'Success',
+        'LastUpdated': datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%SZ'),
+        'Type': 'AWS-HMAC',
+        'AccessKeyId': access_key_id,
+        'SecretAccessKey': secret_access_key,
+        'Token': '',
+        'Expiration': (datetime.datetime.now() + datetime.timedelta(days=1)).strftime('%Y-%m-%dT%H:%M:%SZ')
+    }
+    return jsonify(iam_role)
+
+
+@app.route('/latest/meta-data/local-hostname', methods=['GET'])
+def local_hostname():
+    return socket.gethostname()
+
+
+@app.route('/latest/meta-data/local-ipv4', methods=['GET'])
+def local_ipv4():
+    return ip
+
+
+@app.route('/latest/user-data', methods=['GET'])
+def userdata():
+    with open(userdata_file, 'r') as file:
+        ud = file.read()
+    return ud
+
+
+@app.errorhandler(400)
+def not_found(error):
+    return make_response(jsonify({'error': 'bad request'}), 400)
+
+
+@app.errorhandler(404)
+def not_found(error):
+    return make_response(jsonify({'error': 'not found'}), 404)
+
+
+@app.errorhandler(500)
+def not_found(error):
+    return make_response(jsonify({'error': 'internal server error'}), 500)
+
+
+if __name__ == '__main__':
+    if len(sys.argv) > 1:
+        if ':' in sys.argv[1]:
+            host = sys.argv[1].split(':')[0]
+            port = int(sys.argv[1].split(':')[1])
+            app.run(host=host, port=port)
+        else:
+            app.run(host=sys.argv[1])
+    else:
+        app.run(debug=True)
