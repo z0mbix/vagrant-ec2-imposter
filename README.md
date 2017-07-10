@@ -92,6 +92,26 @@ $ curl http://169.254.169.254/latest/meta-data/iam/security-credentials/iam_role
 }
 ```
 
+```
+$ curl http://169.254.169.254/latest/dynamic/instance-identity/document
+{
+  "accountId": "123456789012",
+  "architecture": "x86_64",
+  "availabilityZone": "eu-west-1a",
+  "billingProducts": null,
+  "devpayProductCodes": null,
+  "imageId": "ami-12abcd34",
+  "instanceId": "i-0ec73af280cfd347b",
+  "instanceType": "t2.medium",
+  "kernelId": null,
+  "pendingTime": "2017-07-10T09:01:20Z",
+  "privateIp": "10.0.2.15",
+  "ramdiskId": null,
+  "region": "eu-west-1",
+  "version": "2010-08-31"
+}
+```
+
 ## Tests
 
 If you want to add a new distro, you can use the inspec tests to validate everything works.
@@ -138,4 +158,5 @@ Target:  ssh://vagrant@127.0.0.1:2200
   Command curl
      ✔  http://169.254.169.254/latest/meta-data/local-ipv4 stdout should eq "10.0.2.15"
 
-Test Summary: 21 successful, 0 failures, 0 skipped```
+Test Summary: 21 successful, 0 failures, 0 skipped
+```
