@@ -4,6 +4,11 @@
 
 This vagrant VM is an attempt to emulate some aspects of an EC2 instance, including user-data and some parts of the metadata service.
 
+## Requirements
+
+* [Vagrant](https://www.vagrantup.com/)
+* [VirtualBox](https://www.virtualbox.org/)
+
 ## Setup
 
 Choose your Linux distro in `Vagrantfile` by setting these two variables:
@@ -110,6 +115,25 @@ $ curl http://169.254.169.254/latest/dynamic/instance-identity/document
   "region": "eu-west-1",
   "version": "2010-08-31"
 }
+```
+
+## Proxy Support
+
+If you are behind a proxy, this should work if you install the `vagrant-proxyconf` plugin:
+
+```
+$ vagrant plugin install vagrant-proxyconf
+```
+
+and export the usual environment variables:
+
+```
+HTTPS_PROXY=http://myproxy.internal.foo:3128
+HTTP_PROXY=http://myproxy.internal.foo:3128
+NO_PROXY=localhost,127.0.0.1,.internal.foo
+http_proxy=http://myproxy.internal.foo:3128
+https_proxy=http://myproxy.internal.foo:3128
+no_proxy=localhost,127.0.0.1,.internal.foo
 ```
 
 ## Tests
