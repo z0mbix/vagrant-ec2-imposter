@@ -1,18 +1,16 @@
 #!/usr/bin/env python
 
-from flask import Flask, jsonify, abort, make_response, request
 import os
 import sys
 import socket
 import datetime
-
+import subprocess
+from flask import Flask, jsonify, abort, make_response, request
 
 app = Flask(__name__)
-ip = '10.0.2.15'
-instance_id = 'i-0ec73af280cfd347b'
-userdata_file = '/etc/user-data'
-access_key_id = ''
-secret_access_key = ''
+app.url_map.strict_slashes = False
+
+region = 'us-east-1'
 if os.environ.get('AWS_ACCESS_KEY_ID') is not None:
     access_key_id = os.environ['AWS_ACCESS_KEY_ID']
 if os.environ.get('AWS_SECRET_ACCESS_KEY') is not None:
@@ -20,6 +18,21 @@ if os.environ.get('AWS_SECRET_ACCESS_KEY') is not None:
 if os.environ.get('AWS_DEFAULT_REGION') is not None:
     region = os.environ['AWS_DEFAULT_REGION']
 
+ip = '10.0.2.15'
+account_id = '123456789012'
+instance_id = 'i-0ec73af280cfd347b'
+instance_type = 't2.medium'
+reservation_id = 'r-abc12345'
+userdata_file = '/etc/user-data'
+ami_id = 'ami-123abc'
+keypair_name = 'vagrant'
+ssh_authorized_keys_file = '/home/vagrant/.ssh/authorized_keys'
+access_key_id = ''
+secret_access_key = ''
+blk_device = '/dev/sda1'
+security_group = 'vagrant'
+security_group_id = 'sg-a1b2c3d4'
+az = region + 'a'
 
 @app.route('/', methods=['GET'])
 def index():
@@ -39,16 +52,73 @@ def latest():
 @app.route('/latest/meta-data/', methods=['GET'])
 def meta_data():
     endpoints = [
-        'iam',
+        'ami-id',
+        'ami-launch-index',
+        'ami-manifest-path',
+        'block-device-mapping/',
+        'hostname',
+        'iam/',
+        'instance-action',
+        'instance-id',
+        'instance-type',
         'local-hostname',
-        'local-ipv4'
+        'local-ipv4',
+        'mac',
+        'metrics/',
+        'network/',
+        'placement/',
+        'profile',
+        'public-hostname',
+        'public-ipv4',
+        'public-keys/',
+        'reservation-id',
+        'security-groups',
+        'services/'
     ]
     return ('\n').join(endpoints)
 
 
+@app.route('/latest/meta-data/ami-id', methods=['GET'])
+def amiid():
+    return ami_id
+
+
+@app.route('/latest/meta-data/ami-launch-index', methods=['GET'])
+def amilaunchindex():
+    return '0'
+
+
+@app.route('/latest/meta-data/ami-manifest-path', methods=['GET'])
+def amimanifestpath():
+    return '(unknown)'
+
+
+@app.route('/latest/meta-data/block-device-mapping/', methods=['GET'])
+def blockdevicemapping():
+    endpoints = [
+        'ami',
+        'root'
+    ]
+    return ('\n').join(endpoints)
+
+
+@app.route('/latest/meta-data/block-device-mapping/ami', methods=['GET'])
+def blockdevicemappingami():
+    return blk_device
+
+
+@app.route('/latest/meta-data/block-device-mapping/root', methods=['GET'])
+def blockdevicemappingroot():
+    return blk_device
+
+
 @app.route('/latest/meta-data/iam/', methods=['GET'])
 def iam():
-    return 'security-credentials'
+    endpoints = [
+        'info',
+        'security-credentials'
+    ]
+    return ('\n').join(endpoints)
 
 
 @app.route('/latest/meta-data/iam/security-credentials/', methods=['GET'])
@@ -70,6 +140,79 @@ def base_iam_role():
     return jsonify(iam_role)
 
 
+@app.route('/latest/meta-data/kernel-id', methods=['GET'])
+def kernelid():
+    cmd = subprocess.Popen(['uname', '-r'], stdout=subprocess.PIPE)
+    out = cmd.communicate()[0].rstrip()
+    return out
+
+
+@app.route('/latest/meta-data/placement/', methods=['GET'])
+def placement():
+    return 'availability-zone'
+
+
+@app.route('/latest/meta-data/profile', methods=['GET'])
+def profile():
+    return 'default-hvm'
+
+
+@app.route('/latest/meta-data/public-keys/', methods=['GET'])
+def publickeys():
+    return '0=' + keypair_name
+
+
+@app.route('/latest/meta-data/public-keys/0', methods=['GET'])
+def publickeyname():
+    return keypair_name
+
+
+@app.route('/latest/meta-data/public-keys/0/' + keypair_name, methods=['GET'])
+def publickey0():
+    with open(ssh_authorized_keys_file, 'r') as f:
+        key = f.read()
+    return key
+
+
+@app.route('/latest/meta-data/reservation-id', methods=['GET'])
+def reservationid():
+    return reservation_id
+
+
+@app.route('/latest/meta-data/services/', methods=['GET'])
+def services():
+    endpoints = [
+        'domain',
+        'partition'
+    ]
+    return ('\n').join(endpoints)
+
+
+@app.route('/latest/meta-data/placement/availability-zone', methods=['GET'])
+def availabilityzone():
+    return az
+
+
+@app.route('/latest/meta-data/hostname', methods=['GET'])
+def hostname():
+    return socket.gethostname()
+
+
+@app.route('/latest/meta-data/instance-action', methods=['GET'])
+def iaction():
+    return 'none'
+
+
+@app.route('/latest/meta-data/instance-id', methods=['GET'])
+def iid():
+    return instance_id
+
+
+@app.route('/latest/meta-data/instance-type', methods=['GET'])
+def itype():
+    return instance_type
+
+
 @app.route('/latest/meta-data/local-hostname', methods=['GET'])
 def local_hostname():
     return socket.gethostname()
@@ -78,6 +221,11 @@ def local_hostname():
 @app.route('/latest/meta-data/local-ipv4', methods=['GET'])
 def local_ipv4():
     return ip
+
+
+@app.route('/latest/meta-data/security-groups', methods=['GET'])
+def sg():
+    return 'vagrant'
 
 
 @app.route('/latest/dynamic/', methods=['GET'])
@@ -112,17 +260,17 @@ def id_doc():
     id = {
         'privateIp': ip,
         'devpayProductCodes': None,
-        'availabilityZone': region + 'a',
+        'availabilityZone': az,
         'version': '2010-08-31',
         'pendingTime': datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%SZ'),
         'instanceId': instance_id,
         'billingProducts': None,
-        'instanceType': 't2.medium',
-        'accountId': '123456789012',
+        'instanceType': instance_type,
+        'accountId': account_id,
         'architecture': 'x86_64',
         'kernelId': None,
         'ramdiskId': None,
-        'imageId': 'ami-12abcd34',
+        'imageId': ami_id,
         'region': region
     }
     return jsonify(id)
@@ -130,13 +278,13 @@ def id_doc():
 
 @app.route('/latest/user-data', methods=['GET'])
 def userdata():
-    with open(userdata_file, 'r') as file:
-        ud = file.read()
+    with open(userdata_file, 'r') as f:
+        ud = f.read()
     return ud
 
 
 @app.errorhandler(400)
-def not_found(error):
+def bad_request(error):
     return make_response(jsonify({'error': 'bad request'}), 400)
 
 
@@ -146,7 +294,7 @@ def not_found(error):
 
 
 @app.errorhandler(500)
-def not_found(error):
+def internal_server_error(error):
     return make_response(jsonify({'error': 'internal server error'}), 500)
 
 
